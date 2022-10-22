@@ -54,7 +54,6 @@ package tcpproxy
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -145,22 +144,18 @@ func (p *Proxy) AddRoute(ipPort string, dest Target) {
 	p.addRoute(ipPort, fixedTarget{dest})
 }
 
-func (p *Proxy) AddIntercepterRoute(ipPort string, dest Target, intercepter func(payload []byte)) {
-	p.addRoute(ipPort, intercepterTarget{dest, intercepter})
+func (p *Proxy) AddIntercepterRoute(ipPort string, dest Target, writer io.Writer) {
+	p.addRoute(ipPort, intercepterTarget{dest, writer})
 }
 
 type intercepterTarget struct {
-	t           Target
-	intercepter func(payload []byte)
+	t      Target
+	writer io.Writer
 }
 
 func (m intercepterTarget) match(reader *bufio.Reader) (Target, string) {
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		log.Print(err)
-	}
-	m.intercepter(data)
-	*reader = *bufio.NewReader(bytes.NewReader(data))
+	teeReader := io.TeeReader(reader, m.writer)
+	*reader = *bufio.NewReader(teeReader)
 	return m.t, ""
 }
 
