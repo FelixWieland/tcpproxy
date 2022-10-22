@@ -155,7 +155,7 @@ type intercepterTarget struct {
 
 func (m intercepterTarget) match(reader *bufio.Reader) (Target, string) {
 	teeReader := io.TeeReader(reader, m.writer)
-	*reader = *bufio.NewReader(teeReader)
+	io.ReadAll(bufio.NewReader(teeReader))
 	return m.t, ""
 }
 
